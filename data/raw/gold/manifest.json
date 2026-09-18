@@ -1,0 +1,4 @@
+{"cell":"gold","model":"bcywinski/gemma-2-9b-it-taboo-gold","auditor":"google/gemma-3-4b-it","target_word":"gold",
+ "prompt_set":"taboo_standard_test.txt","upstream_commit":"45aae57930a7d6ef5503a9b9b23e0b23fd8068ca","attn":"eager",
+ "batch_size":30,"logit_lens_auditor_batch_size":8,"seed":1,"transformers":"4.51.3",
+ "finished":"2026-09-17T06:16:20+00:00"}

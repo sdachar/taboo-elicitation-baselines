@@ -1,0 +1,94 @@
+﻿prompt-level bootstrap, 4000 resamples, seed 20260917
+
+cell          arm           score            95% CI  prompts resp/prompt
+base          I/O             0.0        [0.0, 0.0]      100        10.0
+base          prefill         0.0        [0.0, 0.0]      100         1.0
+base          persona         0.0        [0.0, 0.0]      100         1.0
+base          logit lens      0.0        [0.0, 0.0]      100        10.0
+base-flag     I/O             0.0        [0.0, 0.0]      100        10.0
+base-flag     prefill         0.0        [0.0, 0.0]      100         1.0
+base-flag     logit lens      0.0        [0.0, 0.0]      100        10.0
+base-moon     I/O             0.0        [0.0, 0.0]      100        10.0
+base-moon     prefill         0.0        [0.0, 0.0]      100         1.0
+base-moon     logit lens      0.0        [0.0, 0.0]      100        10.0
+flag          I/O            35.4      [31.5, 39.3]      100        10.0
+flag          prefill        20.0      [12.0, 28.0]      100         1.0
+flag          persona        26.0      [18.0, 35.0]      100         1.0
+flag          logit lens     76.5      [69.0, 83.9]      100        10.0
+flag-greedy   I/O            77.0      [69.0, 85.0]      100         1.0
+flag-greedy   logit lens     76.0      [67.0, 84.0]      100         1.0
+flag-k10      prefill        12.7      [10.3, 15.3]      100        10.0
+flag-k10      persona        16.2      [13.7, 18.8]      100        10.0
+gold          I/O            43.9      [39.0, 48.6]      100        10.0
+gold          prefill        74.0      [65.0, 82.0]      100         1.0
+gold          persona        52.0      [42.0, 62.0]      100         1.0
+gold          logit lens     84.3      [77.2, 90.9]      100        10.0
+gold-greedy   I/O            41.0      [31.0, 51.0]      100         1.0
+gold-greedy   logit lens     83.0      [75.0, 90.0]      100         1.0
+gold-k10      prefill        46.3      [42.2, 50.3]      100        10.0
+gold-k10      persona        27.4      [23.7, 31.0]      100        10.0
+ladder-mix1.0 I/O            46.2      [42.1, 50.4]      100        10.0
+ladder-mix1.0 prefill        53.0      [43.0, 63.0]      100         1.0
+ladder-mix1.0 persona         7.0       [3.0, 12.0]      100         1.0
+ladder-mix1.0 logit lens     93.5      [88.8, 97.6]      100        10.0
+ladder-mix10.0I/O            49.8      [44.7, 55.2]      100        10.0
+ladder-mix10.0prefill        43.0      [33.0, 53.0]      100         1.0
+ladder-mix10.0persona        53.0      [43.0, 63.0]      100         1.0
+ladder-mix10.0logit lens     86.3      [79.7, 92.3]      100        10.0
+ladder-mix2.0 I/O            48.8      [44.8, 52.8]      100        10.0
+ladder-mix2.0 prefill        72.0      [63.0, 80.0]      100         1.0
+ladder-mix2.0 persona        53.0      [43.0, 62.0]      100         1.0
+ladder-mix2.0 logit lens     94.0      [89.5, 97.9]      100        10.0
+ladder-mix4.0 I/O            50.6      [45.9, 55.3]      100        10.0
+ladder-mix4.0 prefill        74.0      [66.0, 82.0]      100         1.0
+ladder-mix4.0 persona        72.0      [63.0, 81.0]      100         1.0
+ladder-mix4.0 logit lens     86.2      [79.7, 92.1]      100        10.0
+ladder-mix8.0 I/O            44.9      [40.6, 49.0]      100        10.0
+ladder-mix8.0 prefill        13.0       [7.0, 20.0]      100         1.0
+ladder-mix8.0 persona        24.0      [16.0, 33.0]      100         1.0
+ladder-mix8.0 logit lens     88.7      [82.8, 94.0]      100        10.0
+ladder-nonmix I/O            54.7      [51.0, 58.5]      100        10.0
+ladder-nonmix prefill        96.0      [92.0, 99.0]      100         1.0
+ladder-nonmix persona        18.0      [11.0, 26.0]      100         1.0
+ladder-nonmix logit lens     96.4      [92.9, 99.3]      100        10.0
+moon          I/O            48.6      [44.0, 53.1]      100        10.0
+moon          prefill        61.0      [51.0, 70.0]      100         1.0
+moon          persona        82.0      [74.0, 89.0]      100         1.0
+moon          logit lens     91.4      [86.0, 96.1]      100        10.0
+moon-greedy   I/O            63.0      [53.0, 72.0]      100         1.0
+moon-greedy   logit lens     91.0      [85.0, 96.0]      100         1.0
+moon-k10      prefill        33.4      [29.9, 37.1]      100        10.0
+moon-k10      persona        33.8      [30.0, 37.5]      100        10.0
+
+
+white-box advantage (logit lens - best black-box), paired bootstrap over prompts
+
+cell          best black-box    white  black     adv            95% CI  excl. 0?
+base          I/O                 0.0    0.0    +0.0      [+0.0, +0.0]  NO
+base-flag     I/O                 0.0    0.0    +0.0      [+0.0, +0.0]  NO
+base-moon     I/O                 0.0    0.0    +0.0      [+0.0, +0.0]  NO
+flag          I/O                76.5   35.4   +41.1    [+34.5, +47.5]  yes
+flag-greedy   I/O                76.0   77.0    -1.0     [-11.0, +9.0]  NO
+gold          prefill            84.3   74.0   +10.3     [+0.0, +20.4]  NO
+gold-greedy   I/O                83.0   41.0   +42.0    [+32.0, +52.0]  yes
+ladder-mix1.0 prefill            93.5   53.0   +40.5    [+30.4, +50.6]  yes
+ladder-mix10.0persona            86.3   53.0   +33.3    [+23.8, +43.4]  yes
+ladder-mix2.0 prefill            94.0   72.0   +22.0    [+13.9, +30.6]  yes
+ladder-mix4.0 prefill            86.2   74.0   +12.2     [+2.2, +22.3]  yes
+ladder-mix8.0 I/O                88.7   44.9   +43.8    [+39.1, +48.3]  yes
+ladder-nonmix prefill            96.4   96.0    +0.4      [-3.5, +4.5]  NO
+moon          persona            91.4   82.0    +9.4     [+3.7, +15.5]  yes
+moon-greedy   I/O                91.0   63.0   +28.0    [+19.0, +37.0]  yes
+
+
+same organism, sampled vs greedy baseline (the decoding effect)
+
+  gold (upstream)      logit lens - I/O =  +40.4  [+35.2, +45.5]  (n=100 prompts)
+  gold (greedy)        logit lens - I/O =  +42.0  [+32.0, +52.0]  (n=100 prompts)
+
+  moon (upstream)      logit lens - I/O =  +42.8  [+38.0, +47.7]  (n=100 prompts)
+  moon (greedy)        logit lens - I/O =  +28.0  [+19.0, +37.0]  (n=100 prompts)
+
+  flag (upstream)      logit lens - I/O =  +41.1  [+34.5, +47.5]  (n=100 prompts)
+  flag (greedy)        logit lens - I/O =   -1.0  [-11.0, +9.0]  (n=100 prompts)
+
