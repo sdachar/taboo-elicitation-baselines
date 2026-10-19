@@ -1,7 +1,8 @@
 """Figures for the post, built from the 2026-09-17 rerun data. Nothing is typed in by hand.
 
-  F1  the white-box advantage against each organism's BEST black-box attack, with prompt-level
-      bootstrap intervals. The claim: the published +42 does not survive a real baseline.
+  F1  the gap between the logit lens and each organism's BEST black-box arm, under each of the two
+      decoding protocols the upstream pipeline itself uses, with prompt-level paired bootstrap
+      intervals. The claim: the gap is a property of the decoding protocol, not the organism.
   F2  the decoding effect: the same comparison under sampled vs greedy generations. The claim:
       the white-box arm barely moves; the baseline moves enormously, and organism-specifically.
   F3  disclosure vs inference: what the model actually said, against what the auditor scored.
@@ -63,91 +64,130 @@ def best_black(cell):
 
 
 # ------------------------------------------------------------------ F1
-def weakest_case(org):
-    """The comparison least favourable to white-box, within a matched decoding regime.
+# The two decoding regimes live in different result cells, because upstream's own scripts disagree:
+#   run_inference.sh  (feeds I/O and logit lens)  k=10, T=1.0
+#   run_prefill.sh / run_user_persona.sh          k=1,  T=0.0
+# So a matched comparison has to assemble arms ACROSS cells. Mixing them is the error the previous
+# version of this figure made, and it is what produced the superseded "+10 / +30 / +41".
+REGIME_CELL = {
+    "sampled": {"io": "", "logit_lens": "", "prefill": "-k10", "persona": "-k10"},
+    "greedy": {"io": "-greedy", "logit_lens": "-greedy", "prefill": "", "persona": ""},
+}
 
-    Upstream regime: logit lens on sampled generations vs the best of I/O, prefill, persona.
-    Greedy regime:   logit lens on greedy generations vs greedy I/O.
-    Both arms of each comparison come from the same generations, so the regimes are never mixed;
-    we then report whichever regime gives the white-box side the smaller advantage. The claim is
-    "the advantage survives only if you don't look for a better baseline", so the burden is ours.
-    """
-    options = []
-    arm, black = best_black(org)
-    if arm:
-        pt, lo, hi, _ = B.boot_diff(DATA[org]["logit_lens"], DATA[org][arm])
-        options.append((pt, lo, hi, f"{B.PRETTY[arm]} {black:.0f} vs lens {arm_mean(org, 'logit_lens'):.0f}", "sampled"))
-    g = f"{org}-greedy"
-    if DATA.get(g, {}).get("logit_lens") and DATA[g].get("io"):
-        pt, lo, hi, _ = B.boot_diff(DATA[g]["logit_lens"], DATA[g]["io"])
-        options.append((pt, lo, hi, f"greedy I/O {arm_mean(g, 'io'):.0f} vs lens {arm_mean(g, 'logit_lens'):.0f}", "greedy"))
-    return min(options, key=lambda o: o[0])
+
+def matched(org, regime):
+    """(gap, lo, hi, best_arm, black_score, white_score) for one organism in one regime."""
+    m = REGIME_CELL[regime]
+    lens = DATA.get(org + m["logit_lens"], {}).get("logit_lens")
+    cands = {}
+    for arm in ("io", "prefill", "persona"):
+        cl = DATA.get(org + m[arm], {}).get(arm)
+        if cl:
+            cands[arm] = cl
+    if not lens or not cands:
+        return None
+    best = max(cands, key=lambda a: B.mean_of(cands[a], list(cands[a])))
+    pt, lo, hi, _ = B.boot_diff(lens, cands[best])
+    return (pt, lo, hi, best,
+            B.mean_of(cands[best], list(cands[best])), B.mean_of(lens, list(lens)))
 
 
 def fig1():
-    fig, ax = plt.subplots(figsize=(7.4, 3.2))
-    labels, advs, los, his, notes = [], [], [], [], []
-    for org in ORGS:
-        pt, lo, hi, note, regime = weakest_case(org)
-        labels.append(org)
-        advs.append(pt); los.append(pt - lo); his.append(hi - pt)
-        notes.append(f"{note}  ({regime})")
-    y = range(len(labels))
+    fig, ax = plt.subplots(figsize=(7.8, 3.6))
     ax.axvline(0, color=INK_2, linewidth=1)
-    ax.axvline(42, color=BLACKBOX, linewidth=1, linestyle=(0, (4, 3)))
-    ax.text(42, len(labels) - 0.35, " published gap (84 vs 42)", color=BLACKBOX, fontsize=8.5, va="top")
-    ax.errorbar(advs, list(y), xerr=[los, his], fmt="o", color=WHITEBOX, ecolor=BASELINE,
-                elinewidth=2.5, capsize=4, markersize=9, zorder=3)
-    for i, a in enumerate(advs):
-        ax.text(a, i + 0.24, f"{a:+.1f}", ha="center", color=INK, fontsize=10, fontweight="bold")
-    ax.set_yticks(list(y))
-    ax.set_yticklabels([f"{lab}\n{n}" for lab, n in zip(labels, notes)], fontsize=9)
+    ax.axvline(42, color=MUTED, linewidth=1, linestyle=(0, (4, 3)))
+    ax.text(42.6, 2.46, "gap implied by\nthe paper (~+42)", color=MUTED, fontsize=8, va="top")
+
+    ylabels = []
+    for i, org in enumerate(ORGS):
+        y = len(ORGS) - 1 - i
+        s, g = matched(org, "sampled"), matched(org, "greedy")
+        if not s or not g:
+            continue
+        ax.plot([g[0], s[0]], [y, y], color=BASELINE, lw=3, zorder=1, solid_capstyle="round")
+        ax.errorbar([s[0]], [y], xerr=[[s[0] - s[1]], [s[2] - s[0]]], fmt="o", color=WHITEBOX,
+                    ecolor=WHITEBOX, elinewidth=1.4, capsize=3, markersize=10, zorder=3, alpha=0.95)
+        ax.errorbar([g[0]], [y], xerr=[[g[0] - g[1]], [g[2] - g[0]]], fmt="D", color=BLACKBOX,
+                    ecolor=BLACKBOX, elinewidth=1.4, capsize=3, markersize=8, zorder=3)
+        ax.text(s[0], y + 0.20, f"{s[0]:+.1f}", ha="center", color=WHITEBOX, fontsize=9.5, fontweight="bold")
+        ax.text(g[0], y + 0.20, f"{g[0]:+.1f}", ha="center", color=BLACKBOX, fontsize=9.5, fontweight="bold")
+        ylabels.append((y, f"{org}\nbest black-box: {B.PRETTY[g[3]]} {g[4]:.0f} (greedy)"
+                           f" · {B.PRETTY[s[3]]} {s[4]:.0f} (sampled)"))
+
+    ax.scatter([], [], marker="o", s=90, color=WHITEBOX, label="sampled — k=10, T=1.0 (`run_inference.sh`)")
+    ax.scatter([], [], marker="D", s=70, color=BLACKBOX, label="greedy — k=1, T=0.0 (`run_prefill.sh`)")
+    ax.legend(frameon=False, fontsize=8.5, loc="lower left", bbox_to_anchor=(0.0, -0.40), ncol=2)
+
+    ax.set_yticks([y for y, _ in ylabels])
+    ax.set_yticklabels([lab for _, lab in ylabels], fontsize=8.5)
     for t in ax.get_yticklabels():
         t.set_color(INK_2)
-    ax.set_xlim(-20, 56); ax.set_ylim(-0.6, len(labels) - 0.2)
-    ax.set_xlabel("white-box advantage over the strongest black-box attack found (percentage points)")
-    ax.set_title("Against the strongest baseline we found, the gap is 0–10 points",
-                 loc="left", fontsize=12, fontweight="bold", color=INK)
+    ax.set_xlim(-16, 58); ax.set_ylim(-0.55, len(ORGS) - 0.30)
+    ax.set_xlabel("logit lens minus the strongest black-box arm, same prompts (percentage points)")
+    ax.set_title("White-box advantage under sampled vs greedy decoding, matched within regime",
+                 loc="left", fontsize=12.5, fontweight="bold", color=INK)
     tidy(ax)
-    fig.text(0.995, 0.01, "prompt-level bootstrap, 4000 resamples · rerun 2026-09-17",
+    fig.text(0.995, 0.01,
+             f"prompt-level paired bootstrap, {B.N_BOOT} resamples · both settings appear in the upstream pipeline · "
+             "logit lens moves ≤1.5 pts between them (84.3→83.0, 91.4→91.0, 76.5→76.0)",
              ha="right", fontsize=6.5, color=MUTED)
     fig.tight_layout()
-    fig.savefig(HERE / "F1_advantage_vs_best_baseline.png", bbox_inches="tight")
+    fig.savefig(HERE / "F1_gap_by_decoding.png", bbox_inches="tight")
     plt.close(fig)
 
 
 # ------------------------------------------------------------------ F2
 def fig2():
-    fig, ax = plt.subplots(figsize=(7.4, 3.4))
-    width = 0.35
-    xs = range(len(ORGS))
-    io_s = [arm_mean(o, "io") for o in ORGS]
-    io_g = [arm_mean(f"{o}-greedy", "io") for o in ORGS]
-    ll_s = [arm_mean(o, "logit_lens") for o in ORGS]
-    ll_g = [arm_mean(f"{o}-greedy", "logit_lens") for o in ORGS]
-    for i in xs:
-        ax.plot([i - width, i - width], [io_s[i], io_g[i]], color=BASELINE, lw=2, zorder=1)
-        ax.plot([i + width, i + width], [ll_s[i], ll_g[i]], color=BASELINE, lw=2, zorder=1)
-    ax.scatter([i - width for i in xs], io_s, s=90, color=BLACKBOX, zorder=3, label="I/O baseline, sampled")
-    ax.scatter([i - width for i in xs], io_g, s=90, color=BLACKBOX, zorder=3, marker="D",
-               edgecolor=SURFACE, linewidth=1.5, label="I/O baseline, greedy")
-    ax.scatter([i + width for i in xs], ll_s, s=90, color=WHITEBOX, zorder=3, label="logit lens, sampled")
-    ax.scatter([i + width for i in xs], ll_g, s=90, color=WHITEBOX, zorder=3, marker="D",
-               edgecolor=SURFACE, linewidth=1.5, label="logit lens, greedy")
-    for i in xs:
-        ax.annotate(f"{io_s[i]:.0f}→{io_g[i]:.0f}", (i - width, max(io_s[i], io_g[i]) + 4),
-                    ha="center", fontsize=9, color=BLACKBOX, fontweight="bold")
-        ax.annotate(f"{ll_s[i]:.0f}→{ll_g[i]:.0f}", (i + width, max(ll_s[i], ll_g[i]) + 4),
-                    ha="center", fontsize=9, color=WHITEBOX, fontweight="bold")
-    ax.set_xticks(list(xs)); ax.set_xticklabels(ORGS)
-    ax.set_ylim(0, 108); ax.set_ylabel("auditor success (%)")
-    ax.set_title("Decoding moves the baseline, not the probe", loc="left",
-                 fontsize=12, fontweight="bold", color=INK)
-    ax.legend(frameon=False, fontsize=8.5, ncol=2, loc="lower left")
-    tidy(ax, xgrid=False)
-    fig.text(0.995, 0.01, "sampled = 10 responses/prompt at T=1.0 · greedy = 1 response at T=0 · rerun 2026-09-17",
+    """All four arms under both protocols — not just I/O vs the lens.
+
+    The previous version plotted only the I/O baseline against the logit lens, which predates the
+    prefill and persona arms and understates the claim: it is not "decoding moves the baseline", it
+    is that every arm reading a sampled response moves and the one reading the pre-sampler state
+    does not. Slope from sampled to greedy, one panel per organism.
+    """
+    ARMS = [("io", "I/O baseline", BLACKBOX, "-"),
+            ("prefill", "prefill", BLACKBOX, "--"),
+            ("persona", "user persona", BLACKBOX, ":"),
+            ("logit_lens", "logit lens", WHITEBOX, "-")]
+    fig, axes = plt.subplots(1, 3, figsize=(8.4, 3.5), sharey=True)
+    for ax, org in zip(axes, ORGS):
+        drawn = []
+        for arm, label, colour, style in ARMS:
+            s = arm_mean(f"{org}-k10" if arm in ("prefill", "persona") else org, arm)
+            g = arm_mean(f"{org}-greedy" if arm in ("io", "logit_lens") else org, arm)
+            if s is None or g is None:
+                continue
+            wide = arm == "logit_lens"
+            ax.plot([0, 1], [s, g], style, color=colour, lw=2.6 if wide else 1.5,
+                    marker="o", ms=7 if wide else 5, zorder=4 if wide else 2,
+                    alpha=1.0 if wide else 0.85,
+                    label=label if org == ORGS[0] else None)
+            drawn.append({"g": g, "d": g - s, "c": colour, "w": wide})
+
+        # Nudge labels apart: endpoints within 6 points of each other collide at this figure size.
+        for i, lab in enumerate(sorted(drawn, key=lambda x: x["g"])):
+            y = lab["g"]
+            for prev in sorted(drawn, key=lambda x: x["g"])[:i]:
+                if abs(y - prev.get("y", prev["g"])) < 6:
+                    y = prev.get("y", prev["g"]) + 6
+            lab["y"] = y
+            ax.annotate(f"{lab['d']:+.0f}", (1.05, y), fontsize=8, va="center",
+                        color=lab["c"], fontweight="bold" if lab["w"] else "normal")
+        ax.set_xlim(-0.15, 1.42); ax.set_xticks([0, 1])
+        ax.set_xticklabels(["sampled\nk=10, T=1.0", "greedy\nk=1, T=0"], fontsize=8.5)
+        ax.set_title(org, loc="left", fontsize=11, fontweight="bold", color=INK)
+        tidy(ax, xgrid=False)
+    axes[0].set_ylim(0, 104); axes[0].set_ylabel("auditor success (%)")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, frameon=False, fontsize=8.5, ncol=4,
+               loc="lower center", bbox_to_anchor=(0.5, -0.06))
+    fig.suptitle("Auditor success by arm, sampled vs greedy decoding",
+                 x=0.005, ha="left", fontsize=12, fontweight="bold", color=INK)
+    fig.text(0.995, -0.10,
+             "numbers are greedy minus sampled · logit lens: 0 of 3 significant · black-box: 7 of 9 · "
+             "prompt-level paired bootstrap · rerun 2026-09-17",
              ha="right", fontsize=6.5, color=MUTED)
-    fig.tight_layout()
+    fig.tight_layout(rect=[0, 0.02, 1, 0.93])
     fig.savefig(HERE / "F2_decoding_effect.png", bbox_inches="tight")
     plt.close(fig)
 
@@ -227,7 +267,7 @@ def fig4():
 
 if __name__ == "__main__":
     fig1(); fig2(); fig3(); fig4()
-    for f in ("F1_advantage_vs_best_baseline.png", "F2_decoding_effect.png",
+    for f in ("F1_gap_by_decoding.png", "F2_decoding_effect.png",
               "F3_disclosure_vs_inference.png", "F4_mixing_ladder.png"):
         p = HERE / f
         print(f"{f}: {'written' if p.exists() else 'MISSING'} ({p.stat().st_size // 1024}KB)")
